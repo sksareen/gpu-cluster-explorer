@@ -1,73 +1,76 @@
-# React + TypeScript + Vite
+# GPU Cluster Scheduling Explorer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**[Live Demo](https://gpu-cluster-explorer.vercel.app)**
 
-Currently, two official plugins are available:
+An interactive decision-support tool that makes GPU scheduling tradeoffs visible and intuitive. Built to demonstrate the core PM challenge in compute platform: helping organizations make good allocation decisions under real-world constraints.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Why This Exists
 
-## React Compiler
+Scheduling GPU clusters is not primarily an algorithms problem — it's a governance problem. The hardest part isn't choosing FIFO vs. Fair-Share. It's that:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Everyone marks their jobs as urgent**, defeating the priority system entirely
+- **Hardware heterogeneity creates invisible bottlenecks** — a 64-GPU training job can be blocked while 80 inference GPUs sit idle
+- **Leadership needs scenario comparison, not dashboards** — "What happens if we switch to Backfill?" is a more useful question than "What's our current utilization?"
 
-## Expanding the ESLint configuration
+This tool makes those dynamics explorable.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Three Views
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Cluster Explorer
+Real-time simulation of a 256-GPU cluster (128 training + 128 inference GPUs) across 4 racks. Watch jobs get allocated with topology-aware placement (same-node NVLink > same-rack InfiniBand > cross-rack). Auto-detected insights surface problems like head-of-line blocking, priority spirals, and GPU fragmentation as they emerge.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Preset scenarios:
+- **Normal Load** — balanced mix of research, production, and platform workloads
+- **Priority Spiral** — 60% urgent jobs, watch the scheduling system degrade to FIFO
+- **Large Job Arrives** — stable cluster disrupted by a 128-GPU training run
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Policy Comparison
+Same workload (seeded PRNG), two different scheduling policies, running side-by-side. Quantified deltas for utilization, wait time, and fairness. This is the format leadership actually uses to evaluate decisions.
+
+### Priority Escalation Lab
+The unique insight. Drag a slider from 0% to 100% urgent jobs and watch the tragedy of the commons unfold in real-time: as more teams mark jobs urgent, the "urgent" lane loses its advantage and wait times spike for everyone. Toggle the approval gate to see how adding friction restores signal to the priority system.
+
+## Cluster Model
+
+| Pool | Racks | Nodes | GPUs | Characteristics |
+|------|-------|-------|------|-----------------|
+| Training | 2 | 16 | 128 | High interconnect (NVLink within node) |
+| Inference | 2 | 16 | 128 | High memory, optimized for serving |
+
+Jobs specify hardware requirements. Training jobs need training GPUs, inference jobs need inference GPUs, flexible jobs can use either. This creates the bin-packing tension that makes real cluster management hard.
+
+## Scheduling Policies
+
+- **FIFO** — Queue order, first-fit. Simple, predictable, but large jobs block everything
+- **SJF** — Shortest job first. Great throughput, but starves large training runs
+- **Fair-Share** — Tracks GPU-hours per team, prioritizes underserved teams
+- **Backfill** — FIFO primary, but fills gaps with smaller jobs that won't delay the head-of-line job
+
+## Metrics
+
+- GPU utilization (per pool and aggregate)
+- Average and P99 wait time
+- Jain's fairness index across teams
+- Fragmentation score (partially-allocated nodes)
+- Queue depth
+- Priority effectiveness (wait time reduction for urgent vs. normal)
+
+## Tech Stack
+
+React 18, TypeScript, Vite, Tailwind CSS. All simulation runs in-browser with no backend. Canvas rendering for the GPU grid and Gantt chart. ~240KB gzipped.
+
+## Development
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Deploy
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Deployed as a static site to Vercel. Any push to `master` triggers a production deployment.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build   # outputs to dist/
+vercel --prod
 ```
