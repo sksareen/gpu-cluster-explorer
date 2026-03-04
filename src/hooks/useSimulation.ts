@@ -1,15 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { SimulationState, WorkloadConfig, SchedulingPolicy, DEFAULT_WORKLOAD_CONFIG } from '../types';
-import { createSimulation, initSimState, tickSimulation } from '../simulation/engine';
+import { createSimulation, tickSimulation, SimContext } from '../simulation/engine';
 
 export function useSimulation(
   initialPolicy: SchedulingPolicy = 'fifo',
   initialConfig: WorkloadConfig = DEFAULT_WORKLOAD_CONFIG,
   seed: number = 42,
 ) {
+  const ctxRef = useRef<SimContext>(null!);
   const [sim, setSim] = useState<SimulationState>(() => {
-    const s = createSimulation(initialPolicy, initialConfig, seed);
-    initSimState(s, initialConfig, seed);
+    const { sim: s, ctx } = createSimulation(initialPolicy, initialConfig, seed);
+    ctxRef.current = ctx;
     return s;
   });
 
@@ -20,7 +21,7 @@ export function useSimulation(
   const lastTickRef = useRef<number>(0);
 
   const tick = useCallback(() => {
-    setSim(prev => tickSimulation(prev));
+    setSim(prev => tickSimulation(prev, ctxRef.current));
   }, []);
 
   const play = useCallback(() => {
@@ -33,8 +34,8 @@ export function useSimulation(
 
   const step = useCallback(() => {
     setSim(prev => {
-      const paused = { ...prev, running: false };
-      return tickSimulation(paused);
+      const next = tickSimulation(prev, ctxRef.current);
+      return { ...next, running: false };
     });
   }, []);
 
@@ -50,8 +51,8 @@ export function useSimulation(
     const p = policy ?? simRef.current.policy;
     const c = config ?? initialConfig;
     const s = newSeed ?? seed;
-    const fresh = createSimulation(p, c, s);
-    initSimState(fresh, c, s);
+    const { sim: fresh, ctx } = createSimulation(p, c, s);
+    ctxRef.current = ctx;
     setSim(fresh);
   }, [initialConfig, seed]);
 
@@ -63,7 +64,7 @@ export function useSimulation(
         const interval = Math.max(16, 200 / current.speed);
         if (timestamp - lastTickRef.current >= interval) {
           lastTickRef.current = timestamp;
-          setSim(prev => tickSimulation(prev));
+          setSim(prev => tickSimulation(prev, ctxRef.current));
         }
       }
       animFrameRef.current = requestAnimationFrame(loop);

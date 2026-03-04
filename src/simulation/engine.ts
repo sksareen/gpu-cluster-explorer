@@ -6,16 +6,22 @@ import { computeMetrics } from './metrics';
 import { detectInsights, resetInsightCounter } from './insights';
 import { SeededRandom } from '../lib/math';
 
+export interface SimContext {
+  rng: SeededRandom;
+  config: WorkloadConfig;
+  teamGpuHours: Map<string, number>;
+}
+
 export function createSimulation(
   policy: SchedulingPolicy,
   config: WorkloadConfig,
   seed: number = 42,
-): SimulationState {
+): { sim: SimulationState; ctx: SimContext } {
   resetJobCounter();
   resetInsightCounter();
   const cluster = createCluster();
   const metrics = computeMetrics(0, cluster, [], [], [], new Map());
-  return {
+  const sim: SimulationState = {
     tick: 0,
     cluster,
     runningJobs: [],
@@ -28,28 +34,16 @@ export function createSimulation(
     speed: 1,
     running: false,
   };
-}
-
-// Mutable state stored alongside simulation
-const simState = new WeakMap<SimulationState, {
-  rng: SeededRandom;
-  config: WorkloadConfig;
-  teamGpuHours: Map<string, number>;
-}>();
-
-export function initSimState(sim: SimulationState, config: WorkloadConfig, seed: number = 42): void {
-  simState.set(sim, {
+  const ctx: SimContext = {
     rng: new SeededRandom(seed),
     config,
     teamGpuHours: new Map(TEAMS.map(t => [t, 0])),
-  });
+  };
+  return { sim, ctx };
 }
 
-export function tickSimulation(sim: SimulationState): SimulationState {
-  const state = simState.get(sim);
-  if (!state) return sim;
-
-  const { rng, config, teamGpuHours } = state;
+export function tickSimulation(sim: SimulationState, ctx: SimContext): SimulationState {
+  const { rng, config, teamGpuHours } = ctx;
   const next = { ...sim };
   next.tick = sim.tick + 1;
 
@@ -119,9 +113,6 @@ export function tickSimulation(sim: SimulationState): SimulationState {
     sim.insights,
   );
   next.insights = [...sim.insights.slice(-10), ...newInsights];
-
-  // Keep simState ref pointing to new object
-  simState.set(next, state);
 
   return next;
 }

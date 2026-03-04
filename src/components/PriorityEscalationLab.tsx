@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { WorkloadConfig, DEFAULT_WORKLOAD_CONFIG, SchedulingPolicy } from '../types';
-import { createSimulation, initSimState, tickSimulation } from '../simulation/engine';
+import { createSimulation, tickSimulation } from '../simulation/engine';
 import { Shield, TrendingUp } from 'lucide-react';
 
 interface DataPoint {
@@ -38,12 +38,11 @@ export function PriorityEscalationLab() {
       };
 
       const policy: SchedulingPolicy = 'fifo';
-      let sim = createSimulation(policy, config, 42);
-      initSimState(sim, config, 42);
+      let { sim, ctx } = createSimulation(policy, config, 42);
 
       // Run 200 ticks
       for (let t = 0; t < 200; t++) {
-        sim = tickSimulation(sim);
+        sim = tickSimulation(sim, ctx);
       }
 
       const completed = sim.completedJobs;
