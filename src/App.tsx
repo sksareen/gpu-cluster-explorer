@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, ReactNode } from 'react';
 import { useSimulation } from './hooks/useSimulation';
 import { ClusterGrid } from './components/ClusterGrid';
 import { MetricsPanel } from './components/MetricsPanel';
@@ -8,6 +8,35 @@ import { PolicyComparison } from './components/PolicyComparison';
 import { PriorityEscalationLab } from './components/PriorityEscalationLab';
 import { DEFAULT_WORKLOAD_CONFIG, PresetScenario } from './types';
 import { Layers, Activity, Zap, Server } from 'lucide-react';
+
+function ScrollReveal({ children, className = '' }: { children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
+      { threshold: 0.15, rootMargin: '0px 0px -10% 0px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ${className}`}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(40px)',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 const STAGES = [
   {
@@ -249,43 +278,49 @@ function ScrollExperience() {
       </div>
 
       {/* ── Policy Comparison ── */}
-      <section className="max-w-[1400px] mx-auto px-4 pt-20 pb-2">
-        <div className="max-w-2xl mb-6">
-          <h2 className="text-xl font-semibold mb-2" style={{ color: '#e2e8f0' }}>
-            What if we tried a different strategy?
-          </h2>
-          <p className="text-sm leading-relaxed" style={{ color: '#94a3b8' }}>
-            Same jobs, same arrival order — but two different scheduling rules running side by side.
-            Watch how the same workload plays out differently depending on who gets to go first.
-          </p>
-        </div>
-      </section>
-      <div className="max-w-[1400px] mx-auto">
-        <PolicyComparison />
+      <div className="max-w-[1400px] mx-auto pt-24">
+        <ScrollReveal className="px-4 mb-6">
+          <div className="max-w-2xl">
+            <h2 className="text-xl font-semibold mb-2" style={{ color: '#e2e8f0' }}>
+              What if we tried a different strategy?
+            </h2>
+            <p className="text-sm leading-relaxed" style={{ color: '#94a3b8' }}>
+              Same jobs, same arrival order — but two different scheduling rules running side by side.
+              Watch how the same workload plays out differently depending on who gets to go first.
+            </p>
+          </div>
+        </ScrollReveal>
+        <ScrollReveal>
+          <PolicyComparison />
+        </ScrollReveal>
       </div>
 
       {/* ── Priority Escalation ── */}
-      <section className="max-w-[1400px] mx-auto px-4 pt-20 pb-2">
-        <div className="max-w-2xl mb-6">
-          <h2 className="text-xl font-semibold mb-2" style={{ color: '#e2e8f0' }}>
-            What happens when everyone's job is "urgent"?
-          </h2>
-          <p className="text-sm leading-relaxed" style={{ color: '#94a3b8' }}>
-            Every team thinks their work is the most important. Drag the slider to see what happens
-            when more and more jobs get marked as top priority — and how a simple approval step can fix it.
-          </p>
-        </div>
-      </section>
-      <div className="max-w-[1400px] mx-auto">
-        <PriorityEscalationLab />
+      <div className="max-w-[1400px] mx-auto pt-24">
+        <ScrollReveal className="px-4 mb-6">
+          <div className="max-w-2xl">
+            <h2 className="text-xl font-semibold mb-2" style={{ color: '#e2e8f0' }}>
+              What happens when everyone's job is "urgent"?
+            </h2>
+            <p className="text-sm leading-relaxed" style={{ color: '#94a3b8' }}>
+              Every team thinks their work is the most important. Drag the slider to see what happens
+              when more and more jobs get marked as top priority — and how a simple approval step can fix it.
+            </p>
+          </div>
+        </ScrollReveal>
+        <ScrollReveal>
+          <PriorityEscalationLab />
+        </ScrollReveal>
       </div>
 
       {/* Footer */}
-      <footer className="px-4 py-12 text-center">
-        <p className="text-xs" style={{ color: '#4b5563' }}>
-          256 GPUs &middot; 5 teams &middot; Real-time simulation running in your browser
-        </p>
-      </footer>
+      <ScrollReveal>
+        <footer className="px-4 py-16 text-center">
+          <p className="text-xs" style={{ color: '#4b5563' }}>
+            256 GPUs &middot; 5 teams &middot; Real-time simulation running in your browser
+          </p>
+        </footer>
+      </ScrollReveal>
     </div>
   );
 }
