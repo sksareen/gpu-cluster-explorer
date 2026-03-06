@@ -9,34 +9,10 @@ import { PriorityEscalationLab } from './components/PriorityEscalationLab';
 import { DEFAULT_WORKLOAD_CONFIG, PresetScenario } from './types';
 import { Layers, Activity, Zap, Server } from 'lucide-react';
 
-function ScrollReveal({ children, className = '' }: { children: ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
-      { threshold: 0.15, rootMargin: '0px 0px -10% 0px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className={`transition-all duration-700 ${className}`}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(40px)',
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+// ── Scroll stages ──
+// Stages 0-3: cluster chapter (sticky panel = GPU grid + progressive controls)
+// Stage 4: comparison chapter (sticky panel = side-by-side policy comparison)
+// Stage 5: priority chapter (sticky panel = escalation lab)
 
 const STAGES = [
   {
@@ -45,7 +21,7 @@ const STAGES = [
   },
   {
     title: 'Jobs arrive and compete',
-    body: 'Every few minutes, new AI jobs show up — training runs that need dozens of GPUs, inference requests that need just a few. The numbers on the right show how the cluster is holding up.',
+    body: 'Every few minutes, new AI jobs show up — training runs that need dozens of GPUs, inference requests that need just a few. The numbers on the left show how the cluster is holding up.',
   },
   {
     title: 'The scheduling rule decides who goes first',
@@ -54,6 +30,14 @@ const STAGES = [
   {
     title: 'What happens under pressure?',
     body: 'Normal conditions are easy. The real test is when things get intense — a giant training job shows up, or everyone marks their work as "urgent." Try a scenario and watch the cluster react.',
+  },
+  {
+    title: 'What if we tried a different strategy?',
+    body: 'Same jobs, same arrival order — but two different scheduling rules running side by side. Watch how the same workload plays out differently depending on who gets to go first.',
+  },
+  {
+    title: 'What happens when everyone\'s job is "urgent"?',
+    body: 'Every team thinks their work is the most important. Drag the slider to see what happens when more and more jobs get marked as top priority — and how a simple approval step can fix it.',
   },
 ];
 
@@ -152,7 +136,11 @@ function ScrollExperience() {
     return () => observer.disconnect();
   }, [isDesktop]);
 
-  const stage = isDesktop ? activeStage : 3; // show everything on mobile
+  // Determine which chapter the sticky panel shows
+  const chapter: 'cluster' | 'comparison' | 'priority' =
+    activeStage <= 3 ? 'cluster' : activeStage === 4 ? 'comparison' : 'priority';
+
+  const clusterStage = isDesktop ? Math.min(activeStage, 3) : 3;
 
   const loadPreset = (preset: PresetScenario) => {
     sim.reset(sim.sim.policy, preset.config);
@@ -172,86 +160,114 @@ function ScrollExperience() {
         </div>
       </nav>
 
-      {/* ── Scrollytelling section ── */}
-      <div className="lg:flex max-w-[1400px] mx-auto relative">
-        {/* Left column — sticky on desktop */}
-        <div className="lg:sticky lg:top-[41px] lg:self-start lg:w-[55%] lg:h-[calc(100vh-41px)] lg:overflow-y-auto p-4">
-          {/* Mobile-only intro (hidden on desktop where the scroll sections provide it) */}
-          <div className="lg:hidden mb-4">
-            <h2 className="text-lg font-semibold mb-1" style={{ color: '#e2e8f0' }}>
-              This is a GPU cluster
-            </h2>
-            <p className="text-sm mb-3" style={{ color: '#94a3b8' }}>
-              Each square is one GPU. Colors show which team is using it. Dark squares are idle.
-            </p>
-          </div>
-
-          {/* GPU Grid — always visible */}
-          <div className="rounded-xl p-4" style={{ background: '#0d0f16', border: '1px solid #2d3154' }}>
-            <ClusterGrid cluster={sim.sim.cluster} runningJobs={sim.sim.runningJobs} />
-          </div>
-
-          {/* Stage 1+: Metrics */}
+      {/* ── Desktop: scrollytelling two-column layout ── */}
+      <div className="hidden lg:flex max-w-[1400px] mx-auto relative">
+        {/* Left column — sticky panel that swaps content by chapter */}
+        <div className="sticky top-[41px] self-start w-[55%] h-[calc(100vh-41px)] overflow-y-auto p-4">
+          {/* Chapter 1: Cluster grid with progressive controls */}
           <div
-            className="mt-3 transition-all duration-500"
-            style={{ opacity: stage >= 1 ? 1 : 0, maxHeight: stage >= 1 ? '500px' : '0', overflow: 'hidden' }}
+            className="transition-opacity duration-500"
+            style={{
+              opacity: chapter === 'cluster' ? 1 : 0,
+              pointerEvents: chapter === 'cluster' ? 'auto' : 'none',
+              position: chapter === 'cluster' ? 'relative' : 'absolute',
+              top: chapter === 'cluster' ? undefined : 0,
+              left: chapter === 'cluster' ? undefined : 0,
+              right: chapter === 'cluster' ? undefined : 0,
+            }}
           >
-            <MetricsPanel metrics={sim.sim.metrics} history={sim.sim.metricsHistory} />
-          </div>
+            <div className="rounded-xl p-4" style={{ background: '#0d0f16', border: '1px solid #2d3154' }}>
+              <ClusterGrid cluster={sim.sim.cluster} runningJobs={sim.sim.runningJobs} />
+            </div>
 
-          {/* Stage 2+: Controls */}
-          <div
-            className="mt-3 transition-all duration-500"
-            style={{ opacity: stage >= 2 ? 1 : 0, maxHeight: stage >= 2 ? '200px' : '0', overflow: 'hidden' }}
-          >
-            <SimulationControls
-              running={sim.sim.running}
-              speed={sim.sim.speed}
-              policy={sim.sim.policy}
-              tick={sim.sim.tick}
-              onPlay={sim.play}
-              onPause={sim.pause}
-              onStep={sim.step}
-              onReset={() => sim.reset()}
-              onSpeedChange={sim.setSpeed}
-              onPolicyChange={sim.setPolicy}
-            />
-          </div>
+            <div
+              className="mt-3 transition-all duration-500"
+              style={{ opacity: clusterStage >= 1 ? 1 : 0, maxHeight: clusterStage >= 1 ? '500px' : '0', overflow: 'hidden' }}
+            >
+              <MetricsPanel metrics={sim.sim.metrics} history={sim.sim.metricsHistory} />
+            </div>
 
-          {/* Stage 3+: Presets + Insights */}
-          <div
-            className="mt-3 transition-all duration-500"
-            style={{ opacity: stage >= 3 ? 1 : 0, maxHeight: stage >= 3 ? '600px' : '0', overflow: 'hidden' }}
-          >
-            <InsightCallout insights={sim.sim.insights} />
+            <div
+              className="mt-3 transition-all duration-500"
+              style={{ opacity: clusterStage >= 2 ? 1 : 0, maxHeight: clusterStage >= 2 ? '200px' : '0', overflow: 'hidden' }}
+            >
+              <SimulationControls
+                running={sim.sim.running}
+                speed={sim.sim.speed}
+                policy={sim.sim.policy}
+                tick={sim.sim.tick}
+                onPlay={sim.play}
+                onPause={sim.pause}
+                onStep={sim.step}
+                onReset={() => sim.reset()}
+                onSpeedChange={sim.setSpeed}
+                onPolicyChange={sim.setPolicy}
+              />
+            </div>
 
-            <div className="mt-3">
-              <p className="text-xs mb-2" style={{ color: '#64748b' }}>Try a scenario:</p>
-              <div className="flex flex-wrap gap-2">
-                {PRESETS.map(preset => {
-                  const Icon = PRESET_ICONS[preset.icon] ?? Activity;
-                  return (
-                    <button
-                      key={preset.name}
-                      onClick={() => loadPreset(preset)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all hover:scale-[1.02]"
-                      style={{ background: '#1a1d2e', border: '1px solid #2d3154', color: '#e2e8f0' }}
-                    >
-                      <Icon size={14} />
-                      <div className="text-left">
-                        <div className="font-medium text-xs">{preset.name}</div>
-                        <div className="text-xs" style={{ color: '#64748b' }}>{preset.description}</div>
-                      </div>
-                    </button>
-                  );
-                })}
+            <div
+              className="mt-3 transition-all duration-500"
+              style={{ opacity: clusterStage >= 3 ? 1 : 0, maxHeight: clusterStage >= 3 ? '600px' : '0', overflow: 'hidden' }}
+            >
+              <InsightCallout insights={sim.sim.insights} />
+              <div className="mt-3">
+                <p className="text-xs mb-2" style={{ color: '#64748b' }}>Try a scenario:</p>
+                <div className="flex flex-wrap gap-2">
+                  {PRESETS.map(preset => {
+                    const Icon = PRESET_ICONS[preset.icon] ?? Activity;
+                    return (
+                      <button
+                        key={preset.name}
+                        onClick={() => loadPreset(preset)}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all hover:scale-[1.02]"
+                        style={{ background: '#1a1d2e', border: '1px solid #2d3154', color: '#e2e8f0' }}
+                      >
+                        <Icon size={14} />
+                        <div className="text-left">
+                          <div className="font-medium text-xs">{preset.name}</div>
+                          <div className="text-xs" style={{ color: '#64748b' }}>{preset.description}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Chapter 2: Policy Comparison */}
+          <div
+            className="transition-opacity duration-500"
+            style={{
+              opacity: chapter === 'comparison' ? 1 : 0,
+              pointerEvents: chapter === 'comparison' ? 'auto' : 'none',
+              position: chapter === 'comparison' ? 'relative' : 'absolute',
+              top: chapter === 'comparison' ? undefined : 0,
+              left: chapter === 'comparison' ? undefined : 0,
+              right: chapter === 'comparison' ? undefined : 0,
+            }}
+          >
+            <PolicyComparison />
+          </div>
+
+          {/* Chapter 3: Priority Escalation */}
+          <div
+            className="transition-opacity duration-500"
+            style={{
+              opacity: chapter === 'priority' ? 1 : 0,
+              pointerEvents: chapter === 'priority' ? 'auto' : 'none',
+              position: chapter === 'priority' ? 'relative' : 'absolute',
+              top: chapter === 'priority' ? undefined : 0,
+              left: chapter === 'priority' ? undefined : 0,
+              right: chapter === 'priority' ? undefined : 0,
+            }}
+          >
+            <PriorityEscalationLab />
+          </div>
         </div>
 
-        {/* Right column — scroll narrative (desktop only) */}
-        <div className="hidden lg:block lg:w-[45%]">
+        {/* Right column — scroll narrative */}
+        <div className="w-[45%]">
           {STAGES.map((s, i) => (
             <div
               key={i}
@@ -277,50 +293,93 @@ function ScrollExperience() {
         </div>
       </div>
 
-      {/* ── Policy Comparison ── */}
-      <div className="max-w-[1400px] mx-auto pt-24">
-        <ScrollReveal className="px-4 mb-6">
-          <div className="max-w-2xl">
-            <h2 className="text-xl font-semibold mb-2" style={{ color: '#e2e8f0' }}>
-              What if we tried a different strategy?
+      {/* ── Mobile: linear layout ── */}
+      <div className="lg:hidden max-w-[1400px] mx-auto">
+        {/* Cluster section */}
+        <div className="p-4">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold mb-1" style={{ color: '#e2e8f0' }}>
+              This is a GPU cluster
             </h2>
-            <p className="text-sm leading-relaxed" style={{ color: '#94a3b8' }}>
-              Same jobs, same arrival order — but two different scheduling rules running side by side.
-              Watch how the same workload plays out differently depending on who gets to go first.
+            <p className="text-sm mb-3" style={{ color: '#94a3b8' }}>
+              Each square is one GPU. Colors show which team is using it. Dark squares are idle.
             </p>
           </div>
-        </ScrollReveal>
-        <ScrollReveal>
-          <PolicyComparison />
-        </ScrollReveal>
-      </div>
 
-      {/* ── Priority Escalation ── */}
-      <div className="max-w-[1400px] mx-auto pt-24">
-        <ScrollReveal className="px-4 mb-6">
-          <div className="max-w-2xl">
-            <h2 className="text-xl font-semibold mb-2" style={{ color: '#e2e8f0' }}>
-              What happens when everyone's job is "urgent"?
-            </h2>
-            <p className="text-sm leading-relaxed" style={{ color: '#94a3b8' }}>
-              Every team thinks their work is the most important. Drag the slider to see what happens
-              when more and more jobs get marked as top priority — and how a simple approval step can fix it.
-            </p>
+          <div className="rounded-xl p-4 mb-3" style={{ background: '#0d0f16', border: '1px solid #2d3154' }}>
+            <ClusterGrid cluster={sim.sim.cluster} runningJobs={sim.sim.runningJobs} />
           </div>
-        </ScrollReveal>
-        <ScrollReveal>
+          <MetricsPanel metrics={sim.sim.metrics} history={sim.sim.metricsHistory} />
+          <div className="mt-3">
+            <SimulationControls
+              running={sim.sim.running}
+              speed={sim.sim.speed}
+              policy={sim.sim.policy}
+              tick={sim.sim.tick}
+              onPlay={sim.play}
+              onPause={sim.pause}
+              onStep={sim.step}
+              onReset={() => sim.reset()}
+              onSpeedChange={sim.setSpeed}
+              onPolicyChange={sim.setPolicy}
+            />
+          </div>
+          <div className="mt-3">
+            <InsightCallout insights={sim.sim.insights} />
+            <div className="mt-3">
+              <p className="text-xs mb-2" style={{ color: '#64748b' }}>Try a scenario:</p>
+              <div className="flex flex-wrap gap-2">
+                {PRESETS.map(preset => {
+                  const Icon = PRESET_ICONS[preset.icon] ?? Activity;
+                  return (
+                    <button
+                      key={preset.name}
+                      onClick={() => loadPreset(preset)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all hover:scale-[1.02]"
+                      style={{ background: '#1a1d2e', border: '1px solid #2d3154', color: '#e2e8f0' }}
+                    >
+                      <Icon size={14} />
+                      <div className="text-left">
+                        <div className="font-medium text-xs">{preset.name}</div>
+                        <div className="text-xs" style={{ color: '#64748b' }}>{preset.description}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Comparison section */}
+        <div className="p-4 pt-12">
+          <h2 className="text-xl font-semibold mb-2" style={{ color: '#e2e8f0' }}>
+            What if we tried a different strategy?
+          </h2>
+          <p className="text-sm leading-relaxed mb-4" style={{ color: '#94a3b8' }}>
+            Same jobs, same arrival order — two different rules side by side.
+          </p>
+          <PolicyComparison />
+        </div>
+
+        {/* Priority section */}
+        <div className="p-4 pt-12">
+          <h2 className="text-xl font-semibold mb-2" style={{ color: '#e2e8f0' }}>
+            What happens when everyone's job is "urgent"?
+          </h2>
+          <p className="text-sm leading-relaxed mb-4" style={{ color: '#94a3b8' }}>
+            Drag the slider to see the tragedy of the commons unfold.
+          </p>
           <PriorityEscalationLab />
-        </ScrollReveal>
+        </div>
       </div>
 
       {/* Footer */}
-      <ScrollReveal>
-        <footer className="px-4 py-16 text-center">
-          <p className="text-xs" style={{ color: '#4b5563' }}>
-            256 GPUs &middot; 5 teams &middot; Real-time simulation running in your browser
-          </p>
-        </footer>
-      </ScrollReveal>
+      <footer className="px-4 py-16 text-center">
+        <p className="text-xs" style={{ color: '#4b5563' }}>
+          256 GPUs &middot; 5 teams &middot; Real-time simulation running in your browser
+        </p>
+      </footer>
     </div>
   );
 }
