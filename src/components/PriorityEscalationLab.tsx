@@ -115,7 +115,7 @@ export function PriorityEscalationLab() {
       ctx.fillStyle = '#64748b';
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText((maxWait * (1 - y / 4)).toFixed(0), margin.left - 8, yy + 4);
+      ctx.fillText(`${(maxWait * (1 - y / 4)).toFixed(0)} min`, margin.left - 8, yy + 4);
     }
 
     // X-axis
@@ -129,7 +129,7 @@ export function PriorityEscalationLab() {
     ctx.translate(14, h / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
-    ctx.fillText('Avg Wait Time (ticks)', 0, 0);
+    ctx.fillText('Avg Wait (min)', 0, 0);
     ctx.restore();
 
     // Draw lines
@@ -204,20 +204,6 @@ export function PriorityEscalationLab() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="rounded-xl p-6" style={{ background: '#0d0f16', border: '1px solid #2d3154' }}>
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold" style={{ color: '#e2e8f0' }}>Priority Escalation Lab</h3>
-            <p className="text-sm mt-1" style={{ color: '#64748b' }}>
-              When everyone marks jobs as urgent, the priority system collapses. Drag the slider to see.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {running && (
-              <span className="text-xs px-2 py-1 rounded-full bg-blue-900 text-blue-300">Simulating...</span>
-            )}
-          </div>
-        </div>
-
         {/* Slider */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
@@ -225,7 +211,7 @@ export function PriorityEscalationLab() {
               Jobs marked as "urgent": <span className="text-amber-400 font-bold">{urgentPct}%</span>
             </span>
             <span className="text-xs" style={{ color: '#64748b' }}>
-              {urgentPct < 20 ? 'Healthy' : urgentPct < 50 ? 'Degrading' : urgentPct < 80 ? 'Spiral forming' : 'System collapsed'}
+              {urgentPct < 20 ? 'Healthy — urgent lane works' : urgentPct < 50 ? 'Degrading — urgent losing its edge' : urgentPct < 80 ? 'Spiral forming — everyone waits longer' : 'Collapsed — "urgent" means nothing'}
             </span>
           </div>
           <input
@@ -243,14 +229,19 @@ export function PriorityEscalationLab() {
         </div>
 
         {/* Chart */}
-        <canvas ref={canvasRef} className="rounded" />
+        <div className="relative">
+          <canvas ref={canvasRef} className="rounded" />
+          {running && (
+            <span className="absolute top-2 right-2 text-xs px-2 py-1 rounded-full bg-blue-900 text-blue-300">Calculating...</span>
+          )}
+        </div>
 
         {/* Current values */}
         {currentData && (
           <div className="grid grid-cols-3 gap-3 mt-4">
-            <StatBox label="Urgent Wait" value={currentData.avgWaitUrgent.toFixed(1)} unit="ticks" color="#ef4444" />
-            <StatBox label="Normal Wait" value={currentData.avgWaitNormal.toFixed(1)} unit="ticks" color="#3b82f6" />
-            <StatBox label="All Jobs Wait" value={currentData.avgWaitAll.toFixed(1)} unit="ticks" color="#94a3b8" />
+            <StatBox label="Urgent jobs wait" value={currentData.avgWaitUrgent.toFixed(1)} unit="min" color="#ef4444" />
+            <StatBox label="Normal jobs wait" value={currentData.avgWaitNormal.toFixed(1)} unit="min" color="#3b82f6" />
+            <StatBox label="Everyone waits" value={currentData.avgWaitAll.toFixed(1)} unit="min" color="#94a3b8" />
           </div>
         )}
       </div>
@@ -260,9 +251,9 @@ export function PriorityEscalationLab() {
         <div className="flex items-center gap-3 mb-4">
           <Shield size={20} color="#22c55e" />
           <div>
-            <h3 className="text-sm font-semibold" style={{ color: '#e2e8f0' }}>The Fix: Priority Approval Gate</h3>
+            <h3 className="text-sm font-semibold" style={{ color: '#e2e8f0' }}>The Fix: Require Approval for Urgent</h3>
             <p className="text-xs" style={{ color: '#64748b' }}>
-              Require manager approval for P0/urgent — only 20% of requests get approved
+              What if teams need manager sign-off to mark a job as urgent? Only ~20% get approved.
             </p>
           </div>
         </div>
@@ -276,7 +267,7 @@ export function PriorityEscalationLab() {
           }`}
         >
           <Shield size={14} />
-          {requireApproval ? 'Approval Gate ON — watch wait times improve' : 'Enable Approval Gate'}
+          {requireApproval ? 'Approval Gate ON — watch wait times drop' : 'Enable Approval Gate'}
         </button>
 
         {requireApproval && (
@@ -284,22 +275,21 @@ export function PriorityEscalationLab() {
             style={{ background: '#0c2912', border: '1px solid #166534' }}>
             <TrendingUp size={14} color="#22c55e" className="mt-0.5 shrink-0" />
             <span style={{ color: '#e2e8f0' }}>
-              With approval gates, effective urgent% drops to ~20% of requested level.
-              Urgent jobs actually get priority again, and overall wait times decrease.
+              With approval, most "urgent" requests get downgraded. The urgent lane
+              works again, and <em>everyone's</em> wait time goes down.
             </span>
           </div>
         )}
       </div>
 
-      {/* Insight */}
+      {/* Takeaway */}
       <div className="rounded-xl p-6" style={{ background: '#0d0f16', border: '1px solid #2d3154' }}>
-        <h3 className="text-sm font-semibold mb-2" style={{ color: '#f59e0b' }}>Why This Matters for Platform PMs</h3>
+        <h3 className="text-sm font-semibold mb-2" style={{ color: '#f59e0b' }}>Why does this happen?</h3>
         <p className="text-sm leading-relaxed" style={{ color: '#94a3b8' }}>
-          Priority systems are a <span style={{ color: '#e2e8f0' }}>tragedy of the commons</span>. Each team
-          rationally marks their jobs as urgent because it reduces <em>their</em> wait time — at least until everyone
-          else does the same. The PM challenge isn't algorithmic: it's designing governance that makes the right
-          behavior the easy behavior. Approval gates add friction proportional to the ask, restoring signal to the
-          priority system.
+          It's a <span style={{ color: '#e2e8f0' }}>tragedy of the commons</span>. Each team marks their jobs urgent because
+          it reduces <em>their</em> wait time — until everyone does the same thing. Then "urgent" just means "normal"
+          and the fast lane disappears. Adding a small approval step (friction) makes teams think twice, which
+          restores the signal that makes priority systems work.
         </p>
       </div>
     </div>

@@ -30,8 +30,8 @@ export function detectInsights(
         newInsights.push({
           id: `hol-${++insightCounter}`,
           type: 'warning',
-          title: 'Head-of-Line Blocking',
-          description: `${holJob.numGPUs}-GPU ${holJob.hardwareType} job waiting while ${totalFree} GPUs idle (wrong pool)`,
+          title: 'Wrong GPU Type',
+          description: `A ${holJob.numGPUs}-GPU ${holJob.hardwareType} job is waiting even though ${totalFree} GPUs are free — they're the wrong type`,
           tick,
         });
       }
@@ -45,7 +45,7 @@ export function detectInsights(
       id: `spiral-${++insightCounter}`,
       type: 'critical',
       title: 'Priority Spiral',
-      description: `${Math.round(urgentInQueue / queue.length * 100)}% of queued jobs marked urgent — priority system ineffective`,
+      description: `${Math.round(urgentInQueue / queue.length * 100)}% of waiting jobs are marked urgent — when everything is urgent, nothing is`,
       tick,
     });
   }
@@ -56,8 +56,8 @@ export function detectInsights(
     newInsights.push({
       id: `frag-${++insightCounter}`,
       type: 'info',
-      title: 'GPU Fragmentation',
-      description: `${partialNodes} nodes partially allocated — large jobs may not fit despite free GPUs`,
+      title: 'Fragmented Resources',
+      description: `GPUs are scattered across ${partialNodes} nodes — like empty seats spread across a theater, a big group can't sit together`,
       tick,
     });
   }
@@ -69,8 +69,8 @@ export function detectInsights(
     newInsights.push({
       id: `starve-${++insightCounter}`,
       type: 'warning',
-      title: 'Job Starvation',
-      description: `${longWaiters.length} jobs waiting 50+ ticks (teams: ${teams.join(', ')})`,
+      title: 'Jobs Stuck Waiting',
+      description: `${longWaiters.length} jobs from ${teams.join(', ')} have been waiting 50+ min — they keep getting skipped`,
       tick,
     });
   }

@@ -14,6 +14,15 @@ const RACK_GAP = 16;
 const POOL_GAP = 24;
 const LABEL_HEIGHT = 20;
 
+const LEGEND_ITEMS = [
+  { label: 'Research-A', color: TEAM_COLORS['Research-A'] },
+  { label: 'Research-B', color: TEAM_COLORS['Research-B'] },
+  { label: 'Production', color: TEAM_COLORS['Production'] },
+  { label: 'Platform', color: TEAM_COLORS['Platform'] },
+  { label: 'ML-Infra', color: TEAM_COLORS['ML-Infra'] },
+  { label: 'Idle', color: '#242842' },
+];
+
 export function ClusterGrid({ cluster, runningJobs, compact = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
@@ -63,8 +72,8 @@ export function ClusterGrid({ cluster, runningJobs, compact = false }: Props) {
     ctx.clearRect(0, 0, canvasW, canvasH);
 
     const pools: { label: string; racks: number[]; y: number }[] = [
-      { label: 'Training Pool', racks: [0, 1], y: 0 },
-      { label: 'Inference Pool', racks: [2, 3], y: poolH + labelH + 8 + poolGap },
+      { label: 'Training GPUs (128)', racks: [0, 1], y: 0 },
+      { label: 'Inference GPUs (128)', racks: [2, 3], y: poolH + labelH + 8 + poolGap },
     ];
 
     for (const pool of pools) {
@@ -158,12 +167,12 @@ export function ClusterGrid({ cluster, runningJobs, compact = false }: Props) {
             setTooltip({
               x: e.clientX,
               y: e.clientY,
-              text: `${job.name} | ${job.team} | ${job.numGPUs} GPUs | ${job.priority}`,
+              text: `${job.name} · ${job.team} · ${job.numGPUs} GPUs · ${job.priority} priority`,
             });
             return;
           }
         }
-        setTooltip({ x: e.clientX, y: e.clientY, text: `GPU ${gpu.id} (idle)` });
+        setTooltip({ x: e.clientX, y: e.clientY, text: `GPU ${gpu.id} — idle` });
         return;
       }
     }
@@ -171,27 +180,54 @@ export function ClusterGrid({ cluster, runningJobs, compact = false }: Props) {
   };
 
   return (
-    <div className="relative">
-      <canvas
-        ref={canvasRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => setTooltip(null)}
-        className="cursor-crosshair"
-      />
-      {tooltip && (
-        <div
-          className="fixed z-50 px-2 py-1 text-xs rounded shadow-lg pointer-events-none"
-          style={{
-            left: tooltip.x + 12,
-            top: tooltip.y - 8,
-            background: '#1a1d2e',
-            border: '1px solid #2d3154',
-            color: '#e2e8f0',
-          }}
-        >
-          {tooltip.text}
+    <div>
+      {/* Pool descriptions (non-compact only) */}
+      {!compact && (
+        <div className="flex flex-wrap gap-6 mb-3">
+          <div className="text-xs" style={{ color: '#64748b' }}>
+            <span style={{ color: '#94a3b8' }}>Training GPUs</span> — for large model training, needs fast GPU-to-GPU connections
+          </div>
+          <div className="text-xs" style={{ color: '#64748b' }}>
+            <span style={{ color: '#94a3b8' }}>Inference GPUs</span> — for serving AI responses, needs lots of memory
+          </div>
         </div>
       )}
+
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setTooltip(null)}
+          className="cursor-crosshair"
+        />
+        {tooltip && (
+          <div
+            className="fixed z-50 px-2 py-1 text-xs rounded shadow-lg pointer-events-none"
+            style={{
+              left: tooltip.x + 12,
+              top: tooltip.y - 8,
+              background: '#1a1d2e',
+              border: '1px solid #2d3154',
+              color: '#e2e8f0',
+            }}
+          >
+            {tooltip.text}
+          </div>
+        )}
+      </div>
+
+      {/* Color legend */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
+        {LEGEND_ITEMS.map(item => (
+          <div key={item.label} className="flex items-center gap-1.5 text-xs" style={{ color: '#94a3b8' }}>
+            <div
+              className="w-2.5 h-2.5 rounded-sm"
+              style={{ background: item.color, border: item.color === '#242842' ? '1px solid #4b5563' : undefined }}
+            />
+            {item.label}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -15,9 +15,9 @@ interface Props {
 }
 
 const POLICIES: { value: SchedulingPolicy; label: string; desc: string }[] = [
-  { value: 'fifo', label: 'FIFO', desc: 'First-in, first-out' },
-  { value: 'sjf', label: 'SJF', desc: 'Shortest job first' },
-  { value: 'fair-share', label: 'Fair-Share', desc: 'Balance across teams' },
+  { value: 'fifo', label: 'FIFO', desc: 'First come, first served' },
+  { value: 'sjf', label: 'SJF', desc: 'Shortest jobs go first' },
+  { value: 'fair-share', label: 'Fair-Share', desc: 'Share equally across teams' },
   { value: 'backfill', label: 'Backfill', desc: 'Fill gaps with small jobs' },
 ];
 
@@ -36,10 +36,10 @@ export function SimulationControls({
         >
           {running ? <Pause size={16} color="#e2e8f0" /> : <Play size={16} color="#e2e8f0" />}
         </button>
-        <button onClick={onStep} className="p-1.5 rounded hover:bg-[#242842] transition-colors" title="Step">
+        <button onClick={onStep} className="p-1.5 rounded hover:bg-[#242842] transition-colors" title="Step forward 1 minute">
           <SkipForward size={16} color="#e2e8f0" />
         </button>
-        <button onClick={onReset} className="p-1.5 rounded hover:bg-[#242842] transition-colors" title="Reset">
+        <button onClick={onReset} className="p-1.5 rounded hover:bg-[#242842] transition-colors" title="Reset simulation">
           <RotateCcw size={16} color="#e2e8f0" />
         </button>
       </div>
@@ -59,19 +59,22 @@ export function SimulationControls({
       </div>
 
       {/* Policy */}
-      <select
-        value={policy}
-        onChange={e => onPolicyChange(e.target.value as SchedulingPolicy)}
-        className="text-sm rounded-lg px-3 py-1.5 outline-none cursor-pointer"
-        style={{ background: '#1a1d2e', border: '1px solid #2d3154', color: '#e2e8f0' }}
-      >
-        {POLICIES.map(p => (
-          <option key={p.value} value={p.value}>{p.label} — {p.desc}</option>
-        ))}
-      </select>
+      <div className="flex items-center gap-2">
+        <span className="text-xs" style={{ color: '#64748b' }}>Scheduling rule:</span>
+        <select
+          value={policy}
+          onChange={e => onPolicyChange(e.target.value as SchedulingPolicy)}
+          className="text-sm rounded-lg px-3 py-1.5 outline-none cursor-pointer"
+          style={{ background: '#1a1d2e', border: '1px solid #2d3154', color: '#e2e8f0' }}
+        >
+          {POLICIES.map(p => (
+            <option key={p.value} value={p.value}>{p.label} — {p.desc}</option>
+          ))}
+        </select>
+      </div>
 
-      {/* Tick counter */}
-      <span className="text-xs font-mono" style={{ color: '#64748b' }}>t={tick}</span>
+      {/* Time counter */}
+      <span className="text-xs font-mono" style={{ color: '#64748b' }}>{tick} min</span>
     </div>
   );
 }

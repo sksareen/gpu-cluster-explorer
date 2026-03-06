@@ -7,10 +7,10 @@ import { SchedulingPolicy, DEFAULT_WORKLOAD_CONFIG } from '../types';
 import { Play, Pause, RotateCcw, ArrowUpDown } from 'lucide-react';
 
 const POLICIES: { value: SchedulingPolicy; label: string }[] = [
-  { value: 'fifo', label: 'FIFO' },
-  { value: 'sjf', label: 'SJF' },
-  { value: 'fair-share', label: 'Fair-Share' },
-  { value: 'backfill', label: 'Backfill' },
+  { value: 'fifo', label: 'First come, first served' },
+  { value: 'sjf', label: 'Shortest jobs first' },
+  { value: 'fair-share', label: 'Share equally across teams' },
+  { value: 'backfill', label: 'Fill gaps with small jobs' },
 ];
 
 const SHARED_SEED = 12345;
@@ -54,10 +54,10 @@ export function PolicyComparison() {
           <button onClick={running ? pauseBoth : playBoth} className="p-1.5 rounded hover:bg-[#242842]">
             {running ? <Pause size={16} color="#e2e8f0" /> : <Play size={16} color="#e2e8f0" />}
           </button>
-          <button onClick={stepBoth} className="p-1.5 rounded hover:bg-[#242842]">
+          <button onClick={stepBoth} className="p-1.5 rounded hover:bg-[#242842]" title="Step forward 1 minute">
             <ArrowUpDown size={16} color="#e2e8f0" />
           </button>
-          <button onClick={resetBoth} className="p-1.5 rounded hover:bg-[#242842]">
+          <button onClick={resetBoth} className="p-1.5 rounded hover:bg-[#242842]" title="Reset both">
             <RotateCcw size={16} color="#e2e8f0" />
           </button>
         </div>
@@ -74,7 +74,7 @@ export function PolicyComparison() {
           ))}
         </div>
 
-        <span className="text-xs font-mono" style={{ color: '#64748b' }}>t={simA.sim.tick}</span>
+        <span className="text-xs font-mono" style={{ color: '#64748b' }}>{simA.sim.tick} min</span>
       </div>
 
       {/* Delta highlights */}
@@ -90,10 +90,10 @@ export function PolicyComparison() {
           />
           <DeltaBadge
             label="Avg Wait"
-            valueA={simA.sim.metrics.avgWaitTime.toFixed(1)}
-            valueB={simB.sim.metrics.avgWaitTime.toFixed(1)}
+            valueA={`${simA.sim.metrics.avgWaitTime.toFixed(1)} min`}
+            valueB={`${simB.sim.metrics.avgWaitTime.toFixed(1)} min`}
             delta={waitDelta}
-            format={v => `${v > 0 ? '+' : ''}${v.toFixed(1)}`}
+            format={v => `${v > 0 ? '+' : ''}${v.toFixed(1)} min`}
             positiveIsGood={false}
           />
           <DeltaBadge
@@ -110,14 +110,14 @@ export function PolicyComparison() {
       {/* Side-by-side panels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <PolicyPanel
-          label="Policy A"
+          label="Strategy A"
           policy={policyA}
           onPolicyChange={changePolicyA}
           sim={simA.sim}
           policies={POLICIES}
         />
         <PolicyPanel
-          label="Policy B"
+          label="Strategy B"
           policy={policyB}
           onPolicyChange={changePolicyB}
           sim={simB.sim}

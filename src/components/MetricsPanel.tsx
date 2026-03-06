@@ -51,8 +51,8 @@ function Sparkline({ data, color, height = 32, width = 80 }: { data: number[]; c
   return <canvas ref={canvasRef} />;
 }
 
-function MetricCard({ label, value, unit, sparkData, color, compact }: {
-  label: string; value: string; unit?: string; sparkData: number[]; color: string; compact?: boolean;
+function MetricCard({ label, value, unit, hint, sparkData, color, compact }: {
+  label: string; value: string; unit?: string; hint?: string; sparkData: number[]; color: string; compact?: boolean;
 }) {
   return (
     <div className="rounded-lg p-3" style={{ background: '#1a1d2e', border: '1px solid #2d3154' }}>
@@ -64,39 +64,49 @@ function MetricCard({ label, value, unit, sparkData, color, compact }: {
         <span className={`font-semibold ${compact ? 'text-lg' : 'text-xl'}`} style={{ color }}>{value}</span>
         <Sparkline data={sparkData} color={color} height={compact ? 24 : 32} width={compact ? 60 : 80} />
       </div>
+      {hint && !compact && (
+        <div className="text-xs mt-1" style={{ color: '#4b5563' }}>{hint}</div>
+      )}
     </div>
   );
 }
 
 export function MetricsPanel({ metrics, history, compact = false }: Props) {
+  const utilizationHint = metrics.utilization > 0.8 ? 'Cluster is busy' : metrics.utilization > 0.5 ? 'Moderate load' : 'Lots of idle GPUs';
+  const waitHint = metrics.avgWaitTime < 10 ? 'Jobs start quickly' : metrics.avgWaitTime < 30 ? 'Some jobs are waiting' : 'Long waits — cluster congested';
+  const fairnessHint = metrics.fairnessIndex > 0.8 ? 'Resources shared fairly' : metrics.fairnessIndex > 0.5 ? 'Some teams getting more' : 'Very unequal sharing';
+
   return (
     <div className={`grid ${compact ? 'grid-cols-2 gap-2' : 'grid-cols-2 gap-3'}`}>
       <MetricCard
         label="GPU Utilization"
         value={`${(metrics.utilization * 100).toFixed(0)}%`}
+        hint={utilizationHint}
         sparkData={history.utilization}
         color={metrics.utilization > 0.8 ? '#22c55e' : metrics.utilization > 0.5 ? '#f59e0b' : '#ef4444'}
         compact={compact}
       />
       <MetricCard
-        label="Avg Wait Time"
+        label="Avg Wait"
         value={metrics.avgWaitTime.toFixed(1)}
-        unit="ticks"
+        unit="min"
+        hint={waitHint}
         sparkData={history.avgWaitTime}
         color={metrics.avgWaitTime < 10 ? '#22c55e' : metrics.avgWaitTime < 30 ? '#f59e0b' : '#ef4444'}
         compact={compact}
       />
       <MetricCard
-        label="Queue Depth"
+        label="Jobs Waiting"
         value={`${metrics.queueDepth}`}
-        unit="jobs"
+        hint={metrics.queueDepth === 0 ? 'No queue' : `${metrics.queueDepth} jobs in line`}
         sparkData={history.queueDepth}
         color={metrics.queueDepth < 5 ? '#22c55e' : metrics.queueDepth < 15 ? '#f59e0b' : '#ef4444'}
         compact={compact}
       />
       <MetricCard
-        label="Fairness Index"
+        label="Fairness"
         value={metrics.fairnessIndex.toFixed(2)}
+        hint={fairnessHint}
         sparkData={history.fairnessIndex}
         color={metrics.fairnessIndex > 0.8 ? '#22c55e' : metrics.fairnessIndex > 0.5 ? '#f59e0b' : '#ef4444'}
         compact={compact}
@@ -104,14 +114,14 @@ export function MetricsPanel({ metrics, history, compact = false }: Props) {
       {!compact && (
         <>
           <MetricCard
-            label="Training Pool"
+            label="Training GPUs"
             value={`${(metrics.trainingUtilization * 100).toFixed(0)}%`}
             sparkData={history.utilization}
             color="#3b82f6"
             compact={compact}
           />
           <MetricCard
-            label="Inference Pool"
+            label="Inference GPUs"
             value={`${(metrics.inferenceUtilization * 100).toFixed(0)}%`}
             sparkData={history.utilization}
             color="#a855f7"

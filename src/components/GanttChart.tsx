@@ -51,7 +51,7 @@ export function GanttChart({ runningJobs, completedJobs, queue, tick, compact = 
       ctx.stroke();
       ctx.fillStyle = '#64748b';
       ctx.font = '9px Inter, sans-serif';
-      ctx.fillText(`t${t}`, x, height - 2);
+      ctx.fillText(`${t}m`, x, height - 2);
     }
 
     // "Now" line
