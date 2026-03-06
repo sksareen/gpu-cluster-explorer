@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, ReactNode } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSimulation } from './hooks/useSimulation';
 import { ClusterGrid } from './components/ClusterGrid';
 import { MetricsPanel } from './components/MetricsPanel';
@@ -7,7 +7,7 @@ import { InsightCallout } from './components/InsightCallout';
 import { PolicyComparison } from './components/PolicyComparison';
 import { PriorityEscalationLab } from './components/PriorityEscalationLab';
 import { DEFAULT_WORKLOAD_CONFIG, PresetScenario } from './types';
-import { Layers, Activity, Zap, Server } from 'lucide-react';
+import { Layers, Activity, Zap, Server, ChevronDown } from 'lucide-react';
 
 // ── Scroll stages ──
 // Stages 0-3: cluster chapter (sticky panel = GPU grid + progressive controls)
@@ -147,6 +147,17 @@ function ScrollExperience() {
     setTimeout(() => sim.play(), 100);
   };
 
+  const [showScrollHint, setShowScrollHint] = useState(true);
+
+  // Hide scroll hint after user scrolls
+  useEffect(() => {
+    const handler = () => {
+      if (window.scrollY > 80) setShowScrollHint(false);
+    };
+    window.addEventListener('scroll', handler, { passive: true });
+    return () => window.removeEventListener('scroll', handler);
+  }, []);
+
   return (
     <div className="min-h-screen" style={{ background: '#0f1117' }}>
       {/* Nav */}
@@ -159,6 +170,42 @@ function ScrollExperience() {
           <span className="font-semibold text-sm" style={{ color: '#e2e8f0' }}>GPU Scheduler Explorer</span>
         </div>
       </nav>
+
+      {/* Scroll hint — fades out after first scroll */}
+      <div
+        className="hidden lg:flex fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex-col items-center gap-1 transition-opacity duration-700"
+        style={{ opacity: showScrollHint ? 1 : 0, pointerEvents: 'none' }}
+      >
+        <span className="text-xs" style={{ color: '#64748b' }}>Scroll to explore</span>
+        <ChevronDown size={16} color="#64748b" className="animate-bounce" />
+      </div>
+
+      {/* Progress dots — desktop only */}
+      <div className="hidden lg:flex fixed right-4 top-1/2 -translate-y-1/2 z-30 flex-col items-center gap-2">
+        {STAGES.map((s, i) => (
+          <button
+            key={i}
+            onClick={() => sectionRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+            className="group relative flex items-center"
+            title={s.title}
+          >
+            <div
+              className="w-2 h-2 rounded-full transition-all duration-300"
+              style={{
+                background: activeStage === i ? '#3b82f6' : activeStage > i ? '#3b82f680' : '#2d3154',
+                transform: activeStage === i ? 'scale(1.5)' : 'scale(1)',
+              }}
+            />
+            {/* Tooltip on hover */}
+            <span
+              className="absolute right-5 whitespace-nowrap text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+              style={{ background: '#1a1d2e', border: '1px solid #2d3154', color: '#e2e8f0' }}
+            >
+              {s.title}
+            </span>
+          </button>
+        ))}
+      </div>
 
       {/* ── Desktop: scrollytelling two-column layout ── */}
       <div className="hidden lg:flex max-w-[1400px] mx-auto relative">
